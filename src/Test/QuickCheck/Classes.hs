@@ -22,7 +22,7 @@ module Test.QuickCheck.Classes
   , apply, applyMorphism, semanticApply
   , applicative, applicativeMorphism, semanticApplicative
   , bind, bindMorphism, semanticBind, bindApply
-  , monad, monadMorphism, semanticMonad, monadFunctor
+  , monad, monadLoose, monadMorphism, semanticMonad, monadFunctor
   , monadApplicative, arrow, arrowChoice, foldable, foldableFunctor, bifoldable, bifoldableBifunctor, traversable
   , monadPlus, monadOr, alt, alternative
   )
@@ -497,6 +497,31 @@ monad = const ( "monad laws"
    assocP m f g = ((m >>= f) >>= g) =-= (m >>= (\x -> f x >>= g))
    pureP x = (pure x :: m a) =-= return x
    apP f x = (f <*> x) =-= (f `ap` x)
+
+-- | Properties to check that the 'Monad' @m@ satisfies the monad properties, but only the three main laws
+monadLoose :: forall m a b c.
+         ( Monad m
+         , Show a, Arbitrary a, CoArbitrary a, CoArbitrary b
+         , Arbitrary (m a), EqProp (m a), Show (m a)
+         , Arbitrary (m b), EqProp (m b)
+         , Arbitrary (m c), EqProp (m c)
+         , Show (m (a -> b)), Arbitrary (m (a -> b))
+         ) =>
+         m (a,b,c) -> TestBatch
+monadLoose = const ( "monad laws"
+              , [ ("left  identity", property leftP)
+                , ("right identity", property rightP)
+                , ("associativity" , property assocP)
+                ]
+              )
+ where
+   leftP  :: (a -> m b) -> a -> Property
+   rightP :: m a -> Property
+   assocP :: m a -> (a -> m b) -> (b -> m c) -> Property
+
+   leftP f a    = (return a >>= f)  =-= f a
+   rightP m     = (m >>= return)    =-=  m
+   assocP m f g = ((m >>= f) >>= g) =-= (m >>= (\x -> f x >>= g))
 
 -- | Law for monads that are also instances of 'Functor'.
 --
